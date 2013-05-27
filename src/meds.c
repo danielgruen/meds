@@ -1572,7 +1572,7 @@ _meds_cutout_write_fits_bail:
     free(name);
 }
 
-void meds_cutouts_write_fits(const struct meds_cutout *self[], int n,
+void meds_cutouts_write_fits(struct meds_cutout *self[], int n,
                             const char *filename,
                             int clobber,
                             int *status)
@@ -1615,7 +1615,7 @@ void meds_cutouts_write_fits(const struct meds_cutout *self[], int n,
       int ocol=MOSAIC_NCOL(self[i]);
       int orow=MOSAIC_NROW(self[i]);
       // write ocol pixels in first row first, repeat orow times
-      printf("starting object %d at col %ld row %ld\n",i+1,firstpixel%dims[0],(firstpixel-firstpixel%dims[0])/dims[0]);
+      printf("starting object %d at col %lld row %lld\n",i+1,firstpixel%dims[0],(firstpixel-firstpixel%dims[0])/dims[0]);
       for(int r=0; r<orow; r++)
       {
         if (fits_write_img(fits, TDOUBLE, firstpixel, ocol, 
@@ -1687,7 +1687,7 @@ _meds_icutout_write_fits_bail:
     free(name);
 }
 
-void meds_icutouts_write_fits(const struct meds_icutout *self[], int n,
+void meds_icutouts_write_fits(struct meds_icutout *self[], int n,
                             const char *filename,
                             int clobber,
                             int *status)
@@ -1729,7 +1729,7 @@ void meds_icutouts_write_fits(const struct meds_icutout *self[], int n,
       int ocol=MOSAIC_NCOL(self[i]);
       int orow=MOSAIC_NROW(self[i]);
       // write ocol pixels in first row first, repeat orow times
-      printf("starting object %d at col %ld row %ld\n",i+1,firstpixel%dims[0],(firstpixel-firstpixel%dims[0])/dims[0]);
+      printf("starting object %d at col %lld row %lld\n",i+1,firstpixel%dims[0],(firstpixel-firstpixel%dims[0])/dims[0]);
       for(int r=0; r<orow; r++)
       {
         if (fits_write_img(fits, TINT, firstpixel, ocol, 

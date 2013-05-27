@@ -432,7 +432,7 @@ void meds_cutout_write_fits(const struct meds_cutout *self,
                             int clobber,
                             int *status);
 
-void meds_cutouts_write_fits(const struct meds_cutout *self[], int n,
+void meds_cutouts_write_fits(struct meds_cutout *self[], int n,
                             const char *filename,
                             int clobber,
                             int *status);
@@ -442,7 +442,7 @@ void meds_icutout_write_fits(const struct meds_icutout *self,
                             int clobber,
                             int *status);
 
-void meds_icutouts_write_fits(const struct meds_icutout *self[], int n,
+void meds_icutouts_write_fits(struct meds_icutout *self[], int n,
                             const char *filename,
                             int clobber,
                             int *status);

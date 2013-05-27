@@ -18,7 +18,7 @@ int main(int argc, char **argv)
     int type=atoi(argv[2]);
 
     printf("opening meds file: %s\n", meds_file);
-    struct meds *meds=meds_open(meds_file);
+    struct meds *meds=meds_open(meds_file,READONLY);
 
     if (!meds) {
         fprintf(stderr,"error reading meds, exiting\n");

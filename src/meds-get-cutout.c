@@ -20,7 +20,7 @@ int main(int argc, char **argv)
     const char *outfile=argv[2];
     int index=atoi(argv[3]);
 
-    struct meds *meds=meds_open(meds_file);
+    struct meds *meds=meds_open(meds_file,READONLY);
     if (!meds) {
         fprintf(stderr,"error reading meds, exiting\n");
         exit(1);

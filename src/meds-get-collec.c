@@ -38,7 +38,6 @@ int main(int argc, char **argv)
     struct meds_icutout *seg[n];
 
     int in=0;
-    int imagetrue=1;
     for(int index=index_first; index<=index_last; index++)
     {
       image[in] = meds_get_mosaic(meds, index);
@@ -46,23 +45,13 @@ int main(int argc, char **argv)
       in++;
     }
 
-    //if (imagetrue) {
-        int status=0;
-        int clobber=1;
-        meds_cutouts_write_fits(image, n, outfile, clobber, &status);	char soutfile[strlen(outfile)+1];
-	strcpy(soutfile+1,outfile);
-	soutfile[0]='s';
-	meds_icutouts_write_fits(seg, n, soutfile, clobber, &status);
-    //} else {
-    //    printf("there was a cutout I couldn't get\n"); 
-    //}
-    
-    /*if (seg) {
-        int status=0;
-        int clobber=1;
-
-        
-    }*/
+    int status=0;
+    int clobber=1;
+    meds_cutouts_write_fits(image, n, outfile, clobber, &status);	
+    char soutfile[strlen(outfile)+1];
+    strcpy(soutfile+1,outfile);
+    soutfile[0]='s';
+    meds_icutouts_write_fits(seg, n, soutfile, clobber, &status);
     
     for(in=0; in<n; in++)
     {
@@ -72,3 +61,4 @@ int main(int argc, char **argv)
 
     meds=meds_free(meds);
 }
+

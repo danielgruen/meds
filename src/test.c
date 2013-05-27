@@ -119,7 +119,7 @@ int main(int argc, char **argv)
     const char *meds_file=argv[1];
 
     printf("opening meds file: %s\n", meds_file);
-    struct meds *meds=meds_open(meds_file);
+    struct meds *meds=meds_open(meds_file,READONLY);
     if (!meds) {
         fprintf(stderr,"error reading meds, exiting\n");
         exit(1);
