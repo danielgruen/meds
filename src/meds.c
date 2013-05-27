@@ -82,11 +82,11 @@ static void print_longs(const long *vals, long n, const char *name,
     fprintf(stream,"\n");
 }
 
-static fitsfile *fits_open(const char *filename)
+static fitsfile *fits_open(const char *filename, int iomode)
 {
     int status=0;
     fitsfile *fits=NULL;
-    if (fits_open_file(&fits, filename, READONLY, &status)) {
+    if (fits_open_file(&fits, filename, iomode, &status)) {
         fits_report_error(stderr,status);
         return NULL;
     }
@@ -957,7 +957,8 @@ static struct meds_icutout *icutout_from_ptr(int *ptr,
 // struct meds
 //
 
-struct meds *meds_open(const char *filename)
+
+struct meds *meds_open(const char *filename, int iomode)
 {
     int err=0;
     struct meds_cat *cat=NULL;
@@ -965,7 +966,7 @@ struct meds *meds_open(const char *filename)
     struct meds_meta *meta=NULL;
     struct meds *self=NULL;
 
-    fitsfile *fits=fits_open(filename);
+    fitsfile *fits=fits_open(filename, iomode);
     if (!fits) {
         return NULL;
     }
@@ -1569,5 +1570,220 @@ void meds_cutout_write_fits(const struct meds_cutout *self,
 
 _meds_cutout_write_fits_bail:
     free(name);
+}
+
+void meds_cutouts_write_fits(const struct meds_cutout *self[], int n,
+                            const char *filename,
+                            int clobber,
+                            int *status)
+{
+    printf("meds_cutouts_write_fits called\n");
+    fitsfile* fits=NULL;
+    LONGLONG firstpixel=1;
+
+    int ndims=2;
+    long dims[2]={0};
+
+    char *name=NULL;
+
+    if (clobber) {
+        name=get_clobber_name(filename);
+    } else {
+        name=strdup(filename);
+    }
+
+    if (fits_create_file(&fits, name, status)) {
+        fits_report_error(stderr,*status);
+        goto _meds_cutouts_write_fits_bail;
+    }
+
+    for(int i=0; i<n; i++)
+    {
+	if(MOSAIC_NROW(self[i])>dims[1]) dims[1]=MOSAIC_NROW(self[i]);
+	dims[0] += MOSAIC_NCOL(self[i]);
+    }
+    
+    printf("writing image with dimensions %ld %ld %d\n",dims[0],dims[1],n);
+    
+    if (fits_create_img(fits, DOUBLE_IMG, ndims, dims, status)) {
+        fits_report_error(stderr,*status);
+        goto _meds_cutouts_write_fits_bail;
+    }
+
+    for(int i=0; i<n; i++)
+    {
+      int ocol=MOSAIC_NCOL(self[i]);
+      int orow=MOSAIC_NROW(self[i]);
+      // write ocol pixels in first row first, repeat orow times
+      printf("starting object %d at col %ld row %ld\n",i+1,firstpixel%dims[0],(firstpixel-firstpixel%dims[0])/dims[0]);
+      for(int r=0; r<orow; r++)
+      {
+        if (fits_write_img(fits, TDOUBLE, firstpixel, ocol, 
+                       self[i]->rows[r], status)) {
+          fits_report_error(stderr,*status);
+          goto _meds_cutouts_write_fits_bail;
+        }
+        firstpixel += dims[0]; // go to next row
+      }
+      firstpixel -= dims[0]*orow-ocol; // go back to first row, then move to next column
+    }
+
+    if (fits_close_file(fits, status)) {
+        fits_report_error(stderr,*status);
+        goto _meds_cutouts_write_fits_bail;
+    }
+
+_meds_cutouts_write_fits_bail:
+    free(name);
+  
+}
+
+
+void meds_icutout_write_fits(const struct meds_icutout *self,
+                            const char *filename,
+                            int clobber,
+                            int *status)
+{
+    fitsfile* fits=NULL;
+    LONGLONG firstpixel=1;
+    LONGLONG nelements=0;
+
+    int ndims=2;
+    long dims[2]={0};
+
+    char *name=NULL;
+
+    if (clobber) {
+        name=get_clobber_name(filename);
+    } else {
+        name=strdup(filename);
+    }
+
+    if (fits_create_file(&fits, name, status)) {
+        fits_report_error(stderr,*status);
+        goto _meds_icutout_write_fits_bail;
+    }
+
+    dims[1] = MOSAIC_NROW(self);
+    dims[0] = MOSAIC_NCOL(self);
+    if (fits_create_img(fits, LONG_IMG, ndims, dims, status)) {
+        fits_report_error(stderr,*status);
+        goto _meds_icutout_write_fits_bail;
+    }
+
+    nelements=MOSAIC_SIZE(self);
+    if (fits_write_img(fits, TINT, firstpixel, nelements, 
+                       self->rows[0], status)) {
+        fits_report_error(stderr,*status);
+        goto _meds_icutout_write_fits_bail;
+    }
+
+    if (fits_close_file(fits, status)) {
+        fits_report_error(stderr,*status);
+        goto _meds_icutout_write_fits_bail;
+    }
+
+_meds_icutout_write_fits_bail:
+    free(name);
+}
+
+void meds_icutouts_write_fits(const struct meds_icutout *self[], int n,
+                            const char *filename,
+                            int clobber,
+                            int *status)
+{
+    fitsfile* fits=NULL;
+    LONGLONG firstpixel=1;
+
+    int ndims=2;
+    long dims[2]={0};
+
+    char *name=NULL;
+
+    if (clobber) {
+        name=get_clobber_name(filename);
+    } else {
+        name=strdup(filename);
+    }
+
+    if (fits_create_file(&fits, name, status)) {
+        fits_report_error(stderr,*status);
+        goto _meds_icutouts_write_fits_bail;
+    }
+
+    for(int i=0; i<n; i++)
+    {
+	if(MOSAIC_NROW(self[i])>dims[1]) dims[1]=MOSAIC_NROW(self[i]);
+	dims[0] += MOSAIC_NCOL(self[i]);
+    }
+    
+    printf("writing image with dimensions %ld %ld %d\n",dims[0],dims[1],n);
+    
+    if (fits_create_img(fits, LONG_IMG, ndims, dims, status)) {
+        fits_report_error(stderr,*status);
+        goto _meds_icutouts_write_fits_bail;
+    }
+
+    for(int i=0; i<n; i++)
+    {
+      int ocol=MOSAIC_NCOL(self[i]);
+      int orow=MOSAIC_NROW(self[i]);
+      // write ocol pixels in first row first, repeat orow times
+      printf("starting object %d at col %ld row %ld\n",i+1,firstpixel%dims[0],(firstpixel-firstpixel%dims[0])/dims[0]);
+      for(int r=0; r<orow; r++)
+      {
+        if (fits_write_img(fits, TINT, firstpixel, ocol, 
+                       self[i]->rows[r], status)) {
+          fits_report_error(stderr,*status);
+          goto _meds_icutouts_write_fits_bail;
+        }
+        firstpixel += dims[0]; // go to next row
+      }
+      firstpixel -= dims[0]*orow-ocol; // go back to first row, then move to next column
+    }
+
+    if (fits_close_file(fits, status)) {
+        fits_report_error(stderr,*status);
+        goto _meds_icutouts_write_fits_bail;
+    }
+
+_meds_icutouts_write_fits_bail:
+    free(name);
+  
+}
+
+
+// update segmentation map of cutout in place
+int meds_update_seg_cutout(const struct meds *self,
+                     long iobj,
+                     long icutout,
+		     int *data)
+{
+  
+    int status=0;
+    
+    if(fits_movnam_hdu(self->fits, IMAGE_HDU, "seg_cutouts", 0, &status)==BAD_HDU_NUM)
+    {
+      fprintf(stderr,"could not find extension, cannot write\n");
+      return 0;
+    }
+
+    const struct meds_obj *obj=check_iobj_icutout(self, iobj, icutout);
+    if (!obj) {
+      fprintf(stderr,"could not find cutout, cannot write\n");
+      return 0;
+    }
+    
+    long fpixel[1];
+    long lpixel[1];
+    fpixel[0] = obj->start_row[icutout]+1;
+    lpixel[0] = fpixel[0]+(obj->box_size*obj->box_size);
+    
+    if (fits_write_subset(self->fits, TINT, fpixel, lpixel, data, &status)) {
+        printf("\nfound a problem\n");
+        fits_report_error(stderr, status);
+    } 
+    
+    return (status==0)?1:0;
 }
 

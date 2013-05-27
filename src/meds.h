@@ -238,7 +238,7 @@ struct meds {
 
 
 // open a meds structure
-struct meds *meds_open(const char *filename);
+struct meds *meds_open(const char *filename, int iomode);
 
 // free the structure.  Returns NULL.  Use like this:
 //    m=meds_free(m);
@@ -431,5 +431,26 @@ void meds_cutout_write_fits(const struct meds_cutout *self,
                             const char *filename,
                             int clobber,
                             int *status);
+
+void meds_cutouts_write_fits(const struct meds_cutout *self[], int n,
+                            const char *filename,
+                            int clobber,
+                            int *status);
+
+void meds_icutout_write_fits(const struct meds_icutout *self,
+                            const char *filename,
+                            int clobber,
+                            int *status);
+
+void meds_icutouts_write_fits(const struct meds_icutout *self[], int n,
+                            const char *filename,
+                            int clobber,
+                            int *status);
+
+// update segmentation map of cutout in place
+int meds_update_seg_cutout(const struct meds *self,
+                     long iobj,
+                     long icutout,
+		     int *data);
 
 #endif

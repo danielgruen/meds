@@ -1,10 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "meds.h"
 
 int main(int argc, char **argv)
 {
-    if (argc < 3) {
+    if (argc < 4) {
         printf("usage: meds-get-cutout meds_file outfile iobj [icutout]\n"
                "  extract a mosaic of all cutouts for the object of index\n"
                "  iobj.  If icutout is sent, only extract the cutout \n"
@@ -26,11 +27,14 @@ int main(int argc, char **argv)
     }
 
     struct meds_cutout *image = NULL;
-    if (argc > 3) {
+    struct meds_icutout *seg    = NULL;
+    if (argc > 4) {
         int icutout=atoi(argv[4]);
         image = meds_get_cutout(meds, index, icutout);
+        seg   = meds_get_seg_cutout(meds, index, icutout);
     } else {
         image = meds_get_mosaic(meds, index);
+        seg   = meds_get_seg_mosaic(meds, index);
     }
 
     if (image) {
@@ -38,7 +42,17 @@ int main(int argc, char **argv)
         int clobber=1;
         meds_cutout_write_fits(image, outfile, clobber, &status);
     }
+    
+    if (seg) {
+        int status=0;
+        int clobber=1;
+	char soutfile[strlen(outfile)+1];
+	strcpy(soutfile+1,outfile);
+	soutfile[0]='s';
+        meds_icutout_write_fits(seg, soutfile, clobber, &status);
+    }
 
     image=meds_cutout_free(image);
+    seg=meds_icutout_free(seg);
     meds=meds_free(meds);
 }
