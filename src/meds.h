@@ -421,6 +421,9 @@ struct meds_icutout *meds_get_seg_cutout(const struct meds *self,
 struct meds_icutout *meds_get_seg_mosaic(const struct meds *self,
                                          long iobj);
 
+struct meds_icutout *meds_get_crmask_mosaic(const struct meds *self,
+					    long iobj);
+
 
 // returns NULL, use like this
 //   cutout=meds_cutout_free(cutout);

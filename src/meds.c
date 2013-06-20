@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fitsio.h>
+#include <math.h>
 
 #include "meds.h"
 
@@ -61,6 +62,58 @@ static int *alloc_ints(long n) {
     }
     return ptr;
 }
+
+
+static int max(int a, int b)
+{
+ if(a>=b) return a;
+ return b; 
+}
+
+static int min(int a, int b)
+{
+ if(a>=b) return b;
+ return a; 
+}
+
+static double median(double **data, double **weight, int n)
+// return median of n data points, discarding ones with weight <= 0
+{
+    double sorted[n];
+    const int N = n;
+    int i=0, ii=0;
+
+    while(i<N) {
+	if((*(weight[i]))>0) {
+	        sorted[ii] = (*(data[i]));
+		++ii;
+	}
+	else {
+		--n;
+	}
+	++i;
+    }
+
+    for (int i = n - 1; i > 0; --i) {
+        for (int j = 0; j < i; ++j) {
+            if (sorted[j] > sorted[j+1]) {
+                double d = sorted[j];
+                sorted[j] = sorted[j+1];
+                sorted[j+1] = d;
+            }
+        }
+    }
+
+    // Middle or average of middle values in the sorted array.
+    double dm = 0.0;
+    if ((n % 2) == 0) {
+        dm = (sorted[n/2] + sorted[(n/2) - 1])/2.0;
+    } else {
+        dm = sorted[n/2];
+    }
+    return dm;
+}
+
 
 
 static void print_doubles(const double* vals, long n, const char *name,
@@ -1504,6 +1557,119 @@ struct meds_icutout *meds_get_seg_mosaic(const struct meds *self, long iobj)
     struct meds_icutout *cutout=icutout_from_ptr(pix, ncutout, nrow, ncol);
     return cutout;
 }
+
+
+struct meds_icutout *meds_get_crmask_mosaic(const struct meds *self, long iobj)
+{  
+    // get weight, segmentation mask and image for each good postage stamp
+    
+    long ncutout=meds_get_ncutout(self, iobj);
+    
+    double * vcutouts[ncutout-1]; 	// image
+    //int    * vsegcutouts[ncutout-1];	// segmap
+    double * vwtcutouts[ncutout-1];	// weight
+    char   update[ncutout-1];		// any mask in there?
+    int    vicutout[ncutout-1];		// index of cutout
+    int ngood = 0;			// number of good cutouts
+
+    long snrow[1]; long sncol[1];
+    long nrow[1]; long ncol[1];
+    free(meds_get_cutoutp(self, iobj, 0, snrow, sncol)); // just get size
+    int snpix = (*snrow)*(*sncol);
+    
+    double rowcen=0,colcen=0;
+    
+    int *mask = alloc_ints((ncutout-1)*snpix);	// allocate mosaic for mask
+       
+    if (!mask) {
+        return NULL;
+    }
+    
+    memset(mask, 0, ncutout*snpix*sizeof(int));	// set to zero
+    
+    for(long icutout=1; icutout<ncutout; ++icutout) {
+      
+	meds_get_cutout_cen(self, iobj, icutout, &rowcen, &colcen);
+	double * vcutout = meds_get_cutoutp(self, iobj, icutout, nrow, ncol);
+	
+	if((*ncol)!=(*sncol) || (*nrow)!=(*snrow))
+	{
+		fprintf(stderr,"skipping object with differing size\n");
+		free(vcutout);
+		continue;
+	}
+	
+	double dr = rowcen-(*nrow)/2.;
+	double dc = colcen-(*ncol)/2.;
+	
+	if(dr>1 || dr<0 || dc>1 || dc<0) {
+		fprintf(stderr,"skipping off-centered object\n");
+		free(vcutout);
+		continue;
+	}
+	
+	const struct meds_distort *distort = meds_get_distortion(self, iobj, icutout);
+	fprintf(stderr,"dudrow=%f dudcol=%f dvdrow=%f dvdcol=%f\n",distort->dudrow,distort->dudcol,distort->dvdrow,distort->dvdcol);
+
+	// TODO: test whether distortion deviation from aligned coordinates is > 1pix inside postage stamp
+	
+	vcutouts[ngood]    = vcutout;
+	//vsegcutouts[ngood] = meds_get_seg_cutoutp(self, iobj, icutout, nrow, ncol);
+	vwtcutouts[ngood] = meds_get_weight_cutoutp(self, iobj, icutout, nrow, ncol);
+	update[ngood] = 0;
+	vicutout[ngood] = icutout;
+	ngood++;
+	
+	}
+
+	int maskline[] = { 1, 1, 1 };
+	for(int ii=0; ii<snpix; ++ii)
+	{
+		double mu; mu = median(vcutouts,vwtcutouts,ngood); // median of good pixels
+		double amu; amu = fabs(mu);
+
+		for (int icutout=0; icutout<ngood; icutout++)
+		{
+		  double wt=*(vwtcutouts[icutout]);
+		  if(wt>0) // it's a good pixel
+		  {
+		    double delta = fmax(fabs(*(vcutouts[icutout])-mu)-0.3*amu,0)*sqrt(wt); 
+		    // deviation in units of sigma with flux leniency parameter A=0.3
+		    
+		    if(delta>5) { // 5sigma outlier, mask 3x3 box
+		      update[icutout]=1;
+		      int col=ii%(*nrow);
+		      int row=(ii-col)/(*nrow);
+		      for (int irow=max(row-1,0); irow<=min(row+1,(*nrow)-1); irow++)
+		      {
+			memcpy(mask+(vicutout[icutout]-1)*snpix-ii+irow*(*nrow)+max(col-1,0),maskline,sizeof(int)*min(3,(*ncol)-col+1));
+		      }
+		    }
+		  }
+		  
+		  // go to next pixel 
+		  vcutouts[icutout]++;
+		  vwtcutouts[icutout]++;
+		  //vsegcutouts[icutout]++;
+		}
+	}
+	
+	// free cutouts
+	for(int icutout=0; icutout<ngood; icutout++) 
+	{
+	 vcutouts[icutout]   -= snpix;
+	 vwtcutouts[icutout] -= snpix;
+	 //vsegcutouts[icutout]-= npix;
+	 
+	 free(vcutouts[icutout]);
+	 free(vwtcutouts[icutout]);
+	 //free(vsegcutouts[icutout]);
+	}
+    
+    struct meds_icutout *cutout=icutout_from_ptr(mask, ncutout, *snrow, *sncol);
+    return cutout;
+}
+
 
 
 
