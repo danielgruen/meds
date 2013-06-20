@@ -1568,7 +1568,6 @@ struct meds_icutout *meds_get_crmask_mosaic(const struct meds *self, long iobj)
     double * vcutouts[ncutout-1]; 	// image
     //int    * vsegcutouts[ncutout-1];	// segmap
     double * vwtcutouts[ncutout-1];	// weight
-    char   update[ncutout-1];		// any mask in there?
     int    vicutout[ncutout-1];		// index of cutout
     int ngood = 0;			// number of good cutouts
 
@@ -1616,7 +1615,6 @@ struct meds_icutout *meds_get_crmask_mosaic(const struct meds *self, long iobj)
 	vcutouts[ngood]    = vcutout;
 	//vsegcutouts[ngood] = meds_get_seg_cutoutp(self, iobj, icutout, nrow, ncol);
 	vwtcutouts[ngood] = meds_get_weight_cutoutp(self, iobj, icutout, nrow, ncol);
-	update[ngood] = 0;
 	vicutout[ngood] = icutout;
 	ngood++;
 	
@@ -1637,7 +1635,6 @@ struct meds_icutout *meds_get_crmask_mosaic(const struct meds *self, long iobj)
 		    // deviation in units of sigma with flux leniency parameter A=0.3
 		    
 		    if(delta>5) { // 5sigma outlier, mask 3x3 box
-		      update[icutout]=1;
 		      int col=ii%(*nrow);
 		      int row=(ii-col)/(*nrow);
 		      for (int irow=max(row-1,0); irow<=min(row+1,(*nrow)-1); irow++)
